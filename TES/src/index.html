@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Untuk Adek</title>
+  <style>
+    :root{
+      --bg:#000;
+      --text:#f5f5f5;
+      --accent:#ff3b3b; /* pita merah */
+      --accent-dark:#c02222;
+      --muted:#9aa0a6;
+      --card:#0b0b0f;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;color:var(--text);background:var(--bg);overflow:hidden}
+    a,button{cursor:pointer}
+
+    /* Layout dasar */
+    .page{position:absolute;inset:0;display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .6s ease}
+    .page.active{opacity:1;pointer-events:auto}
+    .content{position:relative;z-index:2;display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center;padding:20px}
+
+    /* Kanvas bintang */
+    canvas.bg{position:absolute;inset:0;z-index:0;background:radial-gradient(ellipse at center, #02030a 0%, #000 70%)}
+
+    /* Judul kecil */
+    .tag{letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:.8rem}
+
+    /* Kartu / surat */
+    .letter-wrap{position:relative;width:min(520px,92vw);}
+
+    .letter{
+      position:relative;background:linear-gradient(180deg,#111418,#0b0e13);
+      border:1px solid #1f2630;border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.6);
+      padding:36px 28px 70px;overflow:hidden;transition:transform .6s ease;
+    }
+    .letter h1{margin:0 0 8px;font-weight:800;font-size:clamp(28px,5vw,40px)}
+    .letter p{margin:4px 0;color:#cbd5e1}
+
+    /* Pita merah */
+    .ribbon{position:absolute;left:50%;top:0;transform:translate(-50%,-40%);display:flex;align-items:center;gap:10px;}
+    .ribbon .band{
+      width:220px;height:16px;background:linear-gradient(90deg,var(--accent),#ff6b6b,var(--accent));
+      border-radius:999px;box-shadow:0 6px 18px rgba(255,59,59,.35);
+    }
+    .seal{
+      width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8e8e 0%,var(--accent) 35%,var(--accent-dark) 70%);
+      display:grid;place-items:center;color:#fff;font-weight:900;letter-spacing:.08em;border:3px solid rgba(0,0,0,.25);
+      box-shadow:0 12px 30px rgba(255,59,59,.35);
+    }
+    .seal span{font-size:.7rem}
+
+    /* Status terbuka/tertutup */
+    .letter[data-open="false"] .cover{opacity:1;transform:translateY(0)}
+    .letter[data-open="true"] .cover{opacity:0;transform:translateY(-110%)}
+
+    .cover{
+      position:absolute;inset:0;background:linear-gradient(180deg,#1a1e26,#0f131a);
+      border-bottom:1px solid #222a36;display:grid;place-items:center;transition:transform .9s cubic-bezier(.2,.8,.2,1),opacity .6s ease;
+    }
+    .cover .title{font-size:clamp(20px,4.5vw,32px);font-weight:800}
+    .cover .subtitle{color:#cbd5e1;margin-top:6px}
+
+    .btn{appearance:none;border:none;border-radius:14px;padding:14px 18px;background:#141825;color:#e6edf6;
+         font-weight:700;transition:transform .06s ease, background .3s ease,opacity .3s;display:inline-flex;align-items:center;gap:10px}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:linear-gradient(90deg,#eb3b48,#ff6b6b,#ff3b3b);color:#fff;box-shadow:0 10px 26px rgba(255,59,59,.28)}
+    .btn.ghost{background:#0f1420;border:1px solid #1f2836;color:#cbd5e1}
+
+    .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+
+    /* Footer mini */
+    .foot-note{font-size:.9rem;color:#aab4c3}
+
+    /* Halaman 2 */
+    .gallery{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;width:min(980px,94vw)}
+    .photo{grid-column:span 4;position:relative;border-radius:16px;overflow:hidden;border:1px solid #1f2630;background:#0b0e13}
+    .photo img{display:block;width:100%;height:280px;object-fit:cover}
+    .photo .cap{padding:8px 10px;font-size:.9rem;color:#cbd5e1;border-top:1px solid #1f2630;background:#0e1218;text-align:center}
+    .desc{grid-column:1/-1;text-align:center;color:#cbd5e1;font-size:1rem;background:#0b0e13;border:1px solid #1f2630;border-radius:14px;padding:14px}
+
+    @media(max-width:900px){.photo{grid-column:span 6}}
+    @media(max-width:560px){.photo{grid-column:1/-1}.letter{padding:30px 22px 64px}}
+
+    /* Kursor bintang kecil saat hover tombol */
+    .spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;pointer-events:none;opacity:.7;filter:drop-shadow(0 0 6px #fff)}
+  </style>
+</head>
+<body>
+  <!-- Halaman 1: Angkasa + Surat berpita merah -->
+  <section id="page1" class="page active" aria-label="Halaman 1">
+    <canvas id="stars1" class="bg" aria-hidden="true"></canvas>
+    <div class="content">
+      <div class="tag">Untuk Adek</div>
+      <div class="art-wrap" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+        <!-- Gambar surat berpita merah (SVG) -->
+        <svg class="art" width="360" height="240" viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Surat berpita merah">
+          <defs>
+            <linearGradient id="env" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#151922"/>
+              <stop offset="100%" stop-color="#0b0e13"/>
+            </linearGradient>
+            <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#ff3b3b"/>
+              <stop offset="50%" stop-color="#ff6b6b"/>
+              <stop offset="100%" stop-color="#e22a2a"/>
+            </linearGradient>
+          </defs>
+          <!-- Amplop -->
+          <rect x="20" y="30" width="320" height="180" rx="16" fill="url(#env)" stroke="#212937"/>
+          <!-- Lipatan amplop -->
+          <path d="M28 38 L180 126 L332 38" fill="#10141b"/>
+          <path d="M28 210 L180 122 L332 210" fill="#0f131a"/>
+          <!-- Pita horizontal -->
+          <rect x="20" y="102" width="320" height="36" rx="8" fill="url(#ribbon)"/>
+          <!-- Segel bundar -->
+          <circle cx="180" cy="120" r="26" fill="#c02222" stroke="#8e1717"/>
+          <circle cx="180" cy="120" r="20" fill="#ff4d4d"/>
+          <text x="180" y="124" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto,Arial" font-size="16" fill="#fff" font-weight="700">❤︎</text>
+        </svg>
+        <button id="btnNext" class="btn primary" aria-label="Menuju halaman 2" onclick="showPage(2);">Buka untuk Adek ➜</button>
+      </div>
+      <div class="foot-note">Ada Pesan Dari Mas Buat Adek</div>
+    </div>
+  </section>
+
+  <!-- Halaman 2: Bintang meletus kecil-kecil + galeri foto -->
+  <section id="page2" class="page" aria-label="Halaman 2">
+    <canvas id="stars2" class="bg" aria-hidden="true"></canvas>
+    <div class="content">
+      <div class="tag">Halaman 2</div>
+      <h2 style="margin:0 0 6px;font-size:clamp(22px,4vw,32px)">Kenangan Kecil Kita</h2>
+      <p style="margin:0 0 14px;color:#cbd5e1">Bintang-bintang kecil meletus lembut di langit. Di bawahnya, tiga foto. ❤︎</p>
+
+      <div class="gallery">
+        <figure class="photo">
+          <img src="image/Foto1.jpg" alt="Foto 1" loading="lazy" />
+          <figcaption class="cap">Ini Waktu Adek Nemenin Mas Cari Celana sama Beli Jaket Yang Bagus Itu</figcaption>
+        </figure>
+        <figure class="photo">
+          <img src="image/Foto2.jpg" alt="Foto 2" loading="lazy" />
+          <figcaption class="cap">Ini Foto Udah Lumayan Lama Jadi Mas Lupa Hehe</figcaption>
+        </figure>
+        <figure class="photo">
+          <img src="image/Foto3.jpg" alt="Foto 3" loading="lazy" />
+          <figcaption class="cap">Ini Adek Cantik Banget Ga Boong</figcaption>
+        </figure>
+        <div class="desc">
+          <strong></strong>
+          “Terima kasih sudah jadi bintang paling terang di langitku.”
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:16px">
+        <button id="btnBack" class="btn">Kembali ke Halaman 1</button>
+      </div>
+      <!-- Tombol kecil untuk kontrol musik -->
+      <button id="btnMusic" class="btn" style="position:fixed;right:16px;bottom:16px;z-index:5;padding:10px 12px;border-radius:999px">🔊 Musik</button>
+    </div>
+  </section>
+
+  <!-- Audio romantis: ganti src dengan file mp3 kamu sendiri. Akan diputar saat tombol Next ditekan. -->
+  <audio id="romantic" preload="auto">
+    <!-- Path dari index.html (di dalam folder src) ke file audio: src/Audio/Lagu1.mp3 -->
+    <source src="Audio/Lagu1.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+  // ======= UTIL: Pergantian halaman =======
+  const page1 = document.getElementById('page1');
+  const page2 = document.getElementById('page2');
+  function showPage(which){
+    if(which === 1){
+      page1.classList.add('active');
+      page2.classList.remove('active');
+      return;
+    }
+    if(which === 2){
+      page2.classList.add('active');
+      page1.classList.remove('active');
+      // Putar musik romantis saat halaman 2 ditampilkan
+      const audio = document.getElementById('romantic');
+      if(audio && typeof audio.play === 'function'){
+        try{ audio.currentTime = 0; audio.play(); }catch(err){ /* autoplay bisa ditolak */ }
+      }
+      return;
+    }
+  }
+
+  // ======= Elemen kontrol =======
+  const btnNext  = document.getElementById('btnNext');
+  const btnBack  = document.getElementById('btnBack');
+  const btnMusic = document.getElementById('btnMusic');
+  const audioEl  = document.getElementById('romantic');
+  if(audioEl){ audioEl.volume = 0.7; }
+
+  // Klik tombol Next: pindah halaman
+  if(btnNext){ btnNext.addEventListener('click', () => { showPage(2); }); }
+  if(btnBack){ btnBack.addEventListener('click', () => { showPage(1); }); }
+  if(btnMusic && audioEl){
+    btnMusic.addEventListener('click', async () => {
+      try{
+        if(audioEl.paused){ await audioEl.play(); btnMusic.textContent = '⏸️ Pause'; }
+        else{ audioEl.pause(); btnMusic.textContent = '🔊 Musik'; }
+      }catch(e){ /* ignore */ }
+    });
+  }
+
+  // ======= Kanvas bintang – Halaman 1 (melintas) =======
+  function starfield(canvas,{count=160,speed=0.9}={}){
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w,h,stars=[]; resize();
+    function resize(){ w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; }
+    window.addEventListener('resize', resize);
+    function makeStar(){
+      return { x: Math.random()*w, y: Math.random()*h, z: Math.random()*1+0.2, r: Math.random()*1.7+0.4, vx: (Math.random()*0.7+0.3)*speed, vy: (Math.random()*0.4-0.2)*speed };
+    }
+    stars = Array.from({length:count}, makeStar);
+    function step(){
+      ctx.clearRect(0,0,w,h);
+      for(const s of stars){
+        s.x += s.vx * s.z; s.y += s.vy * s.z;
+        if(s.x> w+20 || s.y<-20 || s.y>h+20){ s.x=-10; s.y=Math.random()*h; s.z=Math.random()*1+0.2; s.r=Math.random()*1.7+0.4; }
+        const g = ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*4);
+        g.addColorStop(0,'rgba(255,255,255,.9)');
+        g.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+      }
+      requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  // ======= Kanvas bintang – Halaman 2 (letupan kecil) =======
+  function starExplosions(canvas){
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w,h; resize();
+    function resize(){ w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; }
+    window.addEventListener('resize', resize);
+
+    const sparks=[];
+    function spawn(x=Math.random()*w, y=Math.random()*h){
+      const n = 8 + Math.floor(Math.random()*8);
+      for(let i=0;i<n;i++){
+        const ang = Math.random()*Math.PI*2;
+        const spd = 0.6 + Math.random()*1.6;
+        sparks.push({x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:1,r:1+Math.random()*1.2});
+      }
+    }
+
+    setInterval(()=>spawn(), 550);
+
+    function step(){
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(0,0,w,h);
+      for(let i=sparks.length-1;i>=0;i--){
+        const p=sparks[i];
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.002; p.life-=0.016;
+        if(p.life<=0){ sparks.splice(i,1); continue; }
+        const alpha = Math.max(p.life,0);
+        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*6);
+        g.addColorStop(0,'rgba(255,255,255,'+(0.9*alpha)+')');
+        g.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*2,0,Math.PI*2); ctx.fill();
+      }
+      requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  // ======= Inisialisasi =======
+  starfield(document.getElementById('stars1'),{count:160,speed:0.9});
+  starExplosions(document.getElementById('stars2'));
+
+  // ======= Efek spark kecil (hiasan) =======
+  function attachSparks(el){
+    if(!el) return; let t;
+    el.addEventListener('mousemove', (e)=>{
+      clearTimeout(t);
+      const s=document.createElement('div'); s.className='spark';
+      s.style.left=e.clientX+'px'; s.style.top=e.clientY+'px'; s.style.opacity='1';
+      document.body.appendChild(s);
+      requestAnimationFrame(()=>{ s.style.transition='transform .8s ease, opacity .8s ease'; s.style.transform='translateY(-10px) scale(0.6)'; s.style.opacity='0'; });
+      t=setTimeout(()=>s.remove(),800);
+    });
+  }
+  attachSparks(btnNext); attachSparks(btnBack);
+</script>
+</body>
+</html>
